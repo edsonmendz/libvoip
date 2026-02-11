@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQUAD P2P - Versão Final</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        /* --- ESTILO GERAL (Dark Mode Otimizado) --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            height: 100vh;
+            background-color: #202225;
+            color: white;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 320px 1fr; /* Lateral um pouco mais larga */
+            height: 100%;
+        }
+
+        /* --- LATERAL (CHAT + CONEXÃO) --- */
+        .sidebar {
+            background-color: #2f3136;
+            border-right: 1px solid #202225;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Painel de Conexão */
+        .connection-panel {
+            background-color: #202225;
+            padding: 15px;
+            border-bottom: 2px solid #7289da;
+        }
+        .my-id-box {
+            background: #333;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 1.1em;
+            color: #ccc; /* Começa cinza até carregar */
+            margin-bottom: 10px;
+            word-break: break-all;
+            cursor: pointer;
+            border: 1px solid #444;
+        }
+        .input-group { display: flex; gap: 5px; }
+        .input-id {
+            flex: 1;
+            padding: 8px;
+            border-radius: 4px;
+            border: none;
+            background: #40444b;
+            color: white;
+        }
+        .btn-connect {
+            background-color: #7289da;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-connect:hover { background-color: #5b6eae; }
+
+        /* Chat */
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #36393f;
+        }
+        .msg { margin-bottom: 8px; font-size: 0.9rem; line-height: 1.4; }
+        .msg strong { color: #7289da; }
+        .sys-msg { color: #aaa; font-style: italic; font-size: 0.8rem; }
+
+        .chat-input-area {
+            padding: 15px;
+            background-color: #2f3136;
+        }
+        .chat-input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #40444b;
+            border: none;
+            color: white;
+        }
+
+        /* --- ÁREA PRINCIPAL --- */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            background-color: #000;
+        }
+
+        /* Topo: Aviso + Lista de Voz */
+        .top-header {
+            display: flex;
+            height: 140px; 
+            border-bottom: 2px solid #333;
+        }
+
+        .warning-box {
+            flex: 2;
+            background-color: #3b1717;
+            color: #ffcccc;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            text-align: center;
+            border-right: 2px solid #202225;
+        }
+
+        /* LISTA DE VOZ */
+        .voice-list-box {
+            flex: 1;
+            background-color: #1e251e;
+            border-left: 2px solid limegreen;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        .voice-title { color: limegreen; font-weight: bold; margin-bottom: 8px; font-size: 0.8em; text-transform: uppercase; }
+        .user-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px;
+            background: rgba(255,255,255,0.05);
+            margin-bottom: 4px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .status-dot { width: 8px; height: 8px; background-color: limegreen; border-radius: 50%; }
+
+        /* GRADE DE VÍDEOS */
+        .video-grid {
+            flex: 1;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-gap: 15px;
+            align-content: center;
+        }
+
+        .video-card {
+            background: #202225;
+            border: 2px solid #444;
+            border-radius: 8px;
+            aspect-ratio: 16/9;
+            position: relative;
+            overflow: hidden;
+        }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .label {
+            position: absolute;
+            bottom: 10px; left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px; border-radius: 4px; font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="connection-panel">
+            <div style="font-size: 0.8em; color: #aaa; margin-bottom: 5px;">SEU ID (Copie e mande pro amigo):</div>
+            <div class="my-id-box" id="my-id" onclick="copiarID()" title="Clique para copiar">
+                Aguarde...
+            </div>
+            
+            <div style="font-size: 0.8em; color: #aaa; margin-bottom: 5px;">CONECTAR NO AMIGO:</div>
+            <div class="input-group">
+                <input type="text" id="target-id" class="input-id" placeholder="Cole o ID dele aqui...">
+                <button class="btn-connect" onclick="conectar()">ENTRAR</button>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-box">
+            <div class="msg sys-msg">Sistema P2P Iniciado...</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="msg-input" class="chat-input" placeholder="Digite mensagem..." onkeypress="enviarMsg(event)">
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-header">
+            <div class="warning-box">
+                ⚠️ <strong>MODO SEGURO P2P ATIVO</strong><br>
+                Conexão direta sem servidores. IP visível para participantes.
+            </div>
+            <div class="voice-list-box">
+                <div class="voice-title">Canal de Voz</div>
+                <div class="user-row" id="user-me">
+                    <div class="status-dot"></div>
+                    <span>Você (Host)</span>
+                </div>
+                <div id="friends-list"></div>
+            </div>
+        </div>
+
+        <div class="video-grid" id="grid">
+            <div class="video-card">
+                <video id="my-video" autoplay muted></video>
+                <div class="label">Você</div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // --- LÓGICA DO SISTEMA ---
+    
+    // Configura o PeerJS com servidor STUN do Google (ajuda a conectar)
+    const peer = new Peer(null, {
+        debug: 2,
+        config: {'iceServers': [
+            { url: 'stun:stun.l.google.com:19302' }
+        ]}
+    }); 
+    
+    let minhaStream = null;
+    let conexoes = [];
+
+    // 1. QUANDO O SERVIDOR PEERJS DEVOLVE SEU ID
+    peer.on('open', id => {
+        const idBox = document.getElementById('my-id');
+        idBox.innerText = id;
+        idBox.style.color = '#43b581'; // Verde
+        idBox.style.fontWeight = 'bold';
+        logSistema("✅ Seu ID está pronto! Copie acima.");
+    });
+
+    // 2. SE DER ERRO NO SERVIDOR
+    peer.on('error', (err) => {
+        const idBox = document.getElementById('my-id');
+        idBox.innerText = "Erro: " + err.type;
+        idBox.style.color = 'red';
+        logSistema("❌ ERRO CRÍTICO: " + err.type);
+    });
+
+    // 3. PEGAR CÂMERA E MICROFONE
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+            minhaStream = stream;
+            document.getElementById('my-video').srcObject = stream;
+
+            // Se alguém te ligar...
+            peer.on('call', call => {
+                call.answer(stream); // Atende enviando seu vídeo
+                
+                call.on('stream', userVideoStream => {
+                    adicionarVideoNaTela(userVideoStream, "Amigo");
+                    adicionarNaListaVoz("Amigo Conectado");
+                });
+            });
+        })
+        .catch(err => {
+            logSistema("⚠️ Sem câmera detectada ou permissão negada.");
+        });
+
+    // 4. QUANDO ALGUÉM CONECTA NO CHAT
+    peer.on('connection', conn => {
+        configurarChat(conn);
+        logSistema("Um amigo entrou no chat!");
+    });
+
+    // --- FUNÇÕES DE AÇÃO ---
+
+    function conectar() {
+        const idAmigo = document.getElementById('target-id').value.trim();
+        if (!idAmigo) return alert("Cole o ID do amigo primeiro!");
+        if (idAmigo === peer.id) return alert("Não ligue para você mesmo!");
+
+        logSistema("Tentando conectar...");
+
+        // Conecta Chat
+        const conn = peer.connect(idAmigo);
+        if(conn) {
+            configurarChat(conn);
+            
+            // Conecta Vídeo (se tiver câmera)
+            if (minhaStream) {
+                const call = peer.call(idAmigo, minhaStream);
+                call.on('stream', remoteStream => {
+                    adicionarVideoNaTela(remoteStream, "Amigo");
+                    adicionarNaListaVoz("Amigo (" + idAmigo.substr(0,4) + ")");
+                });
+                call.on('error', err => logSistema("Erro no vídeo: " + err));
+            }
+        }
+    }
+
+    function configurarChat(conn) {
+        conexoes.push(conn);
+        conn.on('data', data => logChat("Amigo", data));
+        conn.on('open', () => conn.send("👋 Opa, conectei!"));
+    }
+
+    function enviarMsg(e) {
+        if (e.key === 'Enter') {
+            const input = document.getElementById('msg-input');
+            const msg = input.value;
+            conexoes.forEach(c => c.send(msg));
+            logChat("Você", msg);
+            input.value = '';
+        }
+    }
+
+    // --- FUNÇÕES VISUAIS ---
+
+    function adicionarVideoNaTela(stream, nome) {
+        const grid = document.getElementById('grid');
+        const card = document.createElement('div');
+        card.className = 'video-card';
+        card.innerHTML = `<video autoplay></video><div class="label">${nome}</div>`;
+        grid.appendChild(card);
+        card.querySelector('video').srcObject = stream;
+    }
+
+    function adicionarNaListaVoz(nome) {
+        const lista = document.getElementById('friends-list');
+        lista.innerHTML += `<div class="user-row"><div class="status-dot"></div><span>${nome}</span></div>`;
+    }
+
+    function logChat(nome, texto) {
+        const box = document.getElementById('chat-box');
+        box.innerHTML += `<div class="msg"><strong>${nome}:</strong> ${texto}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function logSistema(texto) {
+        const box = document.getElementById('chat-box');
+        box.innerHTML += `<div class="msg sys-msg">${texto}</div>`;
+    }
+
+    function copiarID() {
+        const idText = document.getElementById('my-id').innerText;
+        navigator.clipboard.writeText(idText);
+        alert("ID copiado!");
+    }
+</script>
+
+</body>
+</html>

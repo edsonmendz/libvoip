@@ -38,7 +38,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SQUAD P2P v1.4</title>
+    <title>SQUAD P2P v1.8 (Mixer Fix)</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -62,11 +62,13 @@
         .modern-input { width:100%; padding:14px; background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); border-radius:var(--radius); outline:none; font-family:var(--font-ui); }
         .modern-input:focus { border-color:var(--primary); box-shadow:0 0 10px var(--primary-glow); }
 
-        /* LAYOUT */
-        .app-container { display:grid; grid-template-columns:1fr 340px; height:100vh; }
+        /* LAYOUT - CORREÇÃO DO CHAT */
+        .app-container { display:grid; grid-template-columns:1fr 340px; height:100vh; transition: grid-template-columns 0.4s ease; }
         .app-container.chat-closed { grid-template-columns:1fr 0px; }
-        .sidebar { background:var(--bg-panel); border-left:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; backdrop-filter:blur(20px); z-index:20; padding:15px; }
-        .main { display:flex; flex-direction:column; height:100vh; position:relative; }
+        .app-container.chat-closed .sidebar { opacity: 0; pointer-events: none; transform: translateX(20px); }
+
+        .sidebar { background:var(--bg-panel); border-left:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; backdrop-filter:blur(20px); z-index:20; padding:15px; min-width: 340px; transition: all 0.4s ease; }
+        .main { display:flex; flex-direction:column; height:100vh; position:relative; overflow:hidden; }
 
         /* TOP BAR */
         .top-bar { height:75px; padding:0 25px; display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.1); border-bottom:1px solid var(--border); backdrop-filter:blur(5px); }
@@ -77,14 +79,14 @@
         .btn-icon:hover { color:var(--primary); background:var(--bg-input); transform:scale(1.1); }
         .btn-icon.active-red { background:#ff4757; color:white; box-shadow:0 0 15px rgba(255,71,87,0.4); }
         .btn-icon.active-green { background:var(--primary); color:var(--bg-body); box-shadow:0 0 15px var(--primary-glow); }
-        .toggle-chat { background:var(--bg-panel); border:1px solid var(--border); color:var(--text-main); width:32px; height:32px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; position:absolute; right:20px; top:90px; z-index:100; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
+        .toggle-chat { background:var(--bg-panel); border:1px solid var(--border); color:var(--text-main); width:32px; height:32px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; position:absolute; right:20px; top:90px; z-index:100; box-shadow:0 4px 10px rgba(0,0,0,0.3); transition: right 0.4s ease, transform 0.4s ease; }
         .chat-closed .toggle-chat { right:10px; transform:rotate(180deg); }
 
         /* VIDEO AREA */
         .grid { flex:1; padding:25px; display:flex; flex-wrap:wrap; justify-content:center; align-content:center; gap:20px; overflow-y:auto; }
         .card { background:#000; border:2px solid var(--border); border-radius:var(--radius); overflow:hidden; position:relative; aspect-ratio:16/9; width:100%; max-width:600px; min-width:300px; flex-grow:1; box-shadow:0 15px 40px rgba(0,0,0,0.4); animation:fadeIn 0.5s ease; }
         .grid:has(.card:only-child) .card { max-width:900px; max-height:80vh; }
-        video { width:100%; height:100%; object-fit:cover; }
+        video { width:100%; height:100%; object-fit:contain; } /* FIX: Contain para ver a tela toda */
         
         .avatar-view { position:absolute; top:0; left:0; width:100%; height:100%; background:var(--bg-panel); display:none; align-items:center; justify-content:center; z-index:2; }
         .card.cam-off .avatar-view { display:flex; }
@@ -96,16 +98,9 @@
         .panel { padding:15px; border-radius:var(--radius); background:var(--bg-input); border:1px solid var(--border); margin-bottom:15px; }
         
         .id-container { display: flex; gap: 8px; margin-top: 10px; }
-        .id-box { 
-            flex: 1; background:rgba(0,0,0,0.2); padding:12px; border-radius:var(--radius); 
-            font-family:monospace; font-size:0.9em; border:1px dashed var(--border); 
-            color:var(--primary); font-weight:bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .btn-copy {
-            background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-dim);
-            width: 40px; border-radius: var(--radius); cursor: pointer; transition: 0.2s;
-            display: flex; align-items: center; justify-content: center;
-        }
+        .id-box { flex: 1; background: rgba(0,0,0,0.2); padding: 12px; border-radius: var(--radius); font-family: monospace; font-size: 0.85em; border: 1px dashed var(--border); color: var(--primary); font-weight: bold; white-space: normal; word-break: break-all; user-select: all; overflow: hidden; }
+
+        .btn-copy { background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-dim); width: 40px; border-radius: var(--radius); cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
         .btn-copy:hover { border-color: var(--primary); color: var(--primary); background: var(--bg-input); }
         .btn-copy:active { background: var(--primary); color:black; }
         
@@ -145,10 +140,17 @@
         .t-cyberpunk { background-color:#00ff9d; } .t-vaporwave { background-color:#ff71ce; } .t-dracula { background-color:#bd93f9; }
         .t-matrix { background-color:#00ff00; } .t-ocean { background-color:#38bdf8; } .t-light { background-color:#ffffff; }
 
+        /* FIX: Container de Mídia Oculto para garantir renderização */
+        #hidden-media-container {
+            position: absolute; top: -9999px; left: -9999px; opacity: 0; pointer-events: none;
+        }
+
         @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
     </style>
 </head>
 <body>
+
+    <div id="hidden-media-container"></div>
 
     <div class="login-overlay" id="loginScreen">
         <div class="login-box">
@@ -199,7 +201,7 @@
                     <button class="btn-icon" id="btn-mic" onclick="toggleMic()" title="Microfone"><i class="fas fa-microphone"></i></button>
                     <button class="btn-icon" id="btn-deafen" onclick="toggleDeafen()" title="Áudio"><i class="fas fa-headphones"></i></button>
                     <div style="width:1px; height:20px; background:var(--border); margin:0 10px;"></div>
-                    <button class="btn-icon" id="btn-share" onclick="startStreamerMode()" title="Compartilhar Tela (PIP)"><i class="fas fa-desktop"></i></button>
+                    <button class="btn-icon" id="btn-share" onclick="toggleScreenShare()" title="Compartilhar Tela (PIP)"><i class="fas fa-desktop"></i></button>
                     <button class="btn-icon" id="btn-pip" onclick="togglePiP()" title="Mini Player"><i class="fas fa-external-link-alt"></i></button>
                     <button class="btn-icon" onclick="abrirConfig()" title="Temas"><i class="fas fa-paint-brush"></i></button>
                 </div>
@@ -209,7 +211,7 @@
                 <div class="card" id="my-card">
                     <div class="avatar-view"><img id="my-avatar-display" src="" class="big-avatar"></div>
                     <video id="my-video" autoplay muted></video>
-                    <div class="label"><img id="my-mini-avatar" src="" class="mini-avatar"> Você</div>
+                    <div class="label"><img id="my-mini-avatar" src="" class="mini-avatar"> Você (Mix)</div>
                 </div>
             </div>
         </main>
@@ -227,7 +229,7 @@
                 <div style="font-size:0.75rem; color:var(--text-dim); font-weight:bold; letter-spacing:1px; margin-bottom:10px;">ENTRAR NA SALA</div>
                 <div style="display:flex; gap:10px;">
                     <input type="text" id="target-id" class="modern-input" style="margin:0; font-family:monospace; padding:10px;" placeholder="ID do Amigo...">
-                    <button onclick="conectarManual()" style="background:var(--primary); border:none; border-radius:var(--radius); width:50px; cursor:pointer; color:var(--bg-body); font-size:1.1rem; box-shadow:0 0 10px var(--primary-glow);"><i class="fas fa-arrow-right"></i></button>
+                    <button id="btn-connect" onclick="conectarManual()" style="background:var(--primary); border:none; border-radius:var(--radius); width:50px; cursor:pointer; color:var(--bg-body); font-size:1.1rem; box-shadow:0 0 10px var(--primary-glow); transition: all 0.2s;"><i class="fas fa-arrow-right"></i></button>
                 </div>
                 <button id="btn-reconnect" class="btn-reconnect" onclick="reconectarUltimo()"><i class="fas fa-history"></i> Reconectar Último</button>
             </div>
@@ -243,24 +245,47 @@
     </div>
 
 <script>
-    // --- VARIÁVEIS ---
+    // --- VARIÁVEIS DO SISTEMA ---
     let peer = null;
-    let localStream = null;  // O que vai para o vídeo e para os amigos (Pode ser Cam ou Mix)
-    let camStream = null;    // Sempre a webcam pura
-    let myNick = "Batata"; 
+    let myNick = "User"; 
     let myAvatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
     let peersConectados = {}; 
-    let isVideoEnabled = true;
-    let isScreenSharing = false;
     const grid = document.getElementById('video-grid');
 
-    // Variáveis do Mixer (Canvas)
-    let mixerCanvas = null;
-    let mixerCtx = null;
-    let screenStreamTemp = null;
-    let drawCamOnCanvas = true; // Controla se a cam aparece no PIP
+    // --- VARIÁVEIS DE MEDIA (ENGINE MIXER) ---
+    // O segredo para funcionar independente é o MIXER.
+    let mixerCanvas = document.createElement('canvas');
+    let mixerCtx = mixerCanvas.getContext('2d');
+    let mixerStream = null; // O stream final que vai para a rede
 
-    // --- SETUP VISUAL ---
+    let camStream = null;    // Webcam Real (pode ser null)
+    let screenStream = null; // Tela Real (pode ser null)
+    let micStream = null;    // Microfone Real (pode ser null)
+
+    // Estados
+    let isCamOn = false;
+    let isScreenOn = false;
+    let isMicOn = false;
+
+    // --- FIX: Elementos de Vídeo anexados ao DOM (Ocultos) ---
+    // Isso garante que o navegador decodifique os frames mesmo em segundo plano
+    const hiddenContainer = document.getElementById('hidden-media-container');
+    
+    const videoCamElement = document.createElement('video');
+    videoCamElement.muted = true; 
+    videoCamElement.autoplay = true;
+    videoCamElement.playsInline = true; 
+    hiddenContainer.appendChild(videoCamElement); // Anexa ao DOM
+    
+    const videoScreenElement = document.createElement('video');
+    videoScreenElement.muted = true; 
+    videoScreenElement.autoplay = true;
+    videoScreenElement.playsInline = true;
+    hiddenContainer.appendChild(videoScreenElement); // Anexa ao DOM
+
+    // --- SETUP INICIAL ---
+    mixerCanvas.width = 1280; mixerCanvas.height = 720;
+    
     function mudarTema(tema) {
         document.documentElement.setAttribute('data-theme', tema);
         localStorage.setItem('squad_theme_v10', tema);
@@ -270,6 +295,11 @@
     mudarTema(localStorage.getItem('squad_theme_v10') || 'cyberpunk');
 
     window.onload = function() {
+        checkReconnectButton();
+        initMixerLoop(); 
+    }
+
+    function checkReconnectButton() {
         const lastId = localStorage.getItem('squad_last_id');
         if(lastId) {
             const btn = document.getElementById('btn-reconnect');
@@ -292,247 +322,287 @@
         }
     }
 
-    function iniciarAplicacao() {
+    async function iniciarAplicacao() {
         const inputNick = document.getElementById('start-nick').value;
         if(inputNick) myNick = inputNick;
         document.getElementById('my-avatar-display').src = myAvatar;
         document.getElementById('my-mini-avatar').src = myAvatar;
         document.getElementById('loginScreen').style.display = 'none';
-        iniciarPeer(); pegarMidiaLocal();
+        
+        iniciarPeer(); 
+        try { await requestMedia(true, true); } catch(e) { console.warn("Iniciando sem mídia:", e); }
+        updateLocalPlayer();
     }
 
-    // --- CORE P2P ---
-    function iniciarPeer() {
-        peer = new Peer(null, { debug: 1 });
-        peer.on('open', id => document.getElementById('my-id').innerText = id);
-        peer.on('connection', conn => setupDados(conn));
-        peer.on('call', call => { call.answer(localStream); setupChamada(call); });
-        peer.on('error', err => { if(err.type === 'peer-unavailable') alert("ID não encontrado."); });
-    }
+    // --- ENGINE DE MIXAGEM (V1.8 - RESOLUÇÃO DINÂMICA) ---
+    function initMixerLoop() {
+        mixerStream = mixerCanvas.captureStream(30);
+        
+        function draw() {
+            // Limpa fundo (Preto)
+            mixerCtx.fillStyle = '#000';
+            mixerCtx.fillRect(0, 0, mixerCanvas.width, mixerCanvas.height);
 
-    async function pegarMidiaLocal() {
-        try {
-            // Pega a CAM inicial
-            camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            localStream = camStream; // No início, localStream é a própria cam
-            document.getElementById('my-video').srcObject = localStream;
-        } catch(e) { console.error("Erro Mídia:", e); }
-    }
-
-    // --- MODO STREAMER (PIP CANVAS MIXER) ---
-    async function startStreamerMode() {
-        if(isScreenSharing) { stopStreamerMode(); return; }
-
-        try {
-            // 1. Pede a tela (Sem hacks de auto-foco)
-            screenStreamTemp = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            
-            // 2. Prepara elementos invisíveis para o desenho
-            const videoTela = document.createElement('video'); videoTela.srcObject = screenStreamTemp; videoTela.muted = true; await videoTela.play();
-            const videoCam = document.createElement('video'); videoCam.srcObject = camStream; videoCam.muted = true; await videoCam.play();
-
-            // 3. Cria o Canvas
-            mixerCanvas = document.createElement('canvas'); 
-            mixerCanvas.width = 1280; mixerCanvas.height = 720; // HD Base
-            mixerCtx = mixerCanvas.getContext('2d');
-
-            // 4. Loop de Desenho
-            function desenhar() {
-                if(!mixerCanvas) return;
+            // Cenário 1: Só Tela (ou Tela + Cam PIP)
+            if(isScreenOn && videoScreenElement.readyState >= 2) {
                 
-                // Desenha Tela (Fundo)
-                mixerCtx.fillStyle = '#000'; mixerCtx.fillRect(0, 0, mixerCanvas.width, mixerCanvas.height);
-                mixerCtx.drawImage(videoTela, 0, 0, mixerCanvas.width, mixerCanvas.height);
-                
-                // Desenha Webcam (PIP) se estiver ativada
-                if(drawCamOnCanvas && isVideoEnabled) {
-                    const camW = 320; const camH = 180; const m = 20;
-                    mixerCtx.strokeStyle = '#00ff9d'; mixerCtx.lineWidth = 3;
-                    mixerCtx.strokeRect(mixerCanvas.width - camW - m, mixerCanvas.height - camH - m, camW, camH);
-                    mixerCtx.drawImage(videoCam, mixerCanvas.width - camW - m, mixerCanvas.height - camH - m, camW, camH);
+                // FIX: Ajusta o tamanho do Canvas para o tamanho da Tela Compartilhada
+                // Isso evita distorção ou borrão se o usuário compartilhar 4k/Ultrawide
+                if(mixerCanvas.width !== videoScreenElement.videoWidth || mixerCanvas.height !== videoScreenElement.videoHeight) {
+                   if(videoScreenElement.videoWidth > 0 && videoScreenElement.videoHeight > 0) {
+                       mixerCanvas.width = videoScreenElement.videoWidth;
+                       mixerCanvas.height = videoScreenElement.videoHeight;
+                   }
                 }
+
+                // Desenha a tela ocupando tudo
+                mixerCtx.drawImage(videoScreenElement, 0, 0, mixerCanvas.width, mixerCanvas.height);
                 
-                requestAnimationFrame(desenhar);
+                // Se tiver cam também, desenha PIP
+                if(isCamOn && videoCamElement.readyState >= 2) {
+                    // Tamanho proporcional do PIP (20% da largura)
+                    const w = mixerCanvas.width * 0.20; 
+                    const h = w * (9/16); 
+                    const p = 20; // Padding
+                    
+                    // Borda Neon
+                    mixerCtx.strokeStyle = '#00ff9d'; mixerCtx.lineWidth = 3;
+                    mixerCtx.strokeRect(mixerCanvas.width - w - p, mixerCanvas.height - h - p, w, h);
+                    // Video
+                    mixerCtx.drawImage(videoCamElement, mixerCanvas.width - w - p, mixerCanvas.height - h - p, w, h);
+                }
+            } 
+            // Cenário 2: Só Camera (Tela Cheia)
+            else if(isCamOn && videoCamElement.readyState >= 2) {
+                // Reseta canvas para 720p padrão se for só webcam
+                if(mixerCanvas.width !== 1280) { mixerCanvas.width = 1280; mixerCanvas.height = 720; }
+                mixerCtx.drawImage(videoCamElement, 0, 0, mixerCanvas.width, mixerCanvas.height);
             }
-            desenhar();
-
-            // 5. Gera o Stream do Canvas
-            const mixedStream = mixerCanvas.captureStream(30); // 30 FPS para não pesar
+            // Cenário 3: Nada (Preto) -> Avatar HTML aparece por cima via CSS
             
-            // Adiciona o áudio do microfone original
-            if(camStream.getAudioTracks().length > 0) mixedStream.addTrack(camStream.getAudioTracks()[0]);
+            requestAnimationFrame(draw);
+        }
+        draw();
+    }
 
-            // 6. Substitui globalmente
-            replaceTrackGlobal(mixedStream.getVideoTracks()[0]);
-            localStream = mixedStream;
-            document.getElementById('my-video').srcObject = mixedStream;
+    async function requestMedia(wantCam, wantMic) {
+        try {
+            // Pede permissão
+            const stream = await navigator.mediaDevices.getUserMedia({ video: wantCam, audio: wantMic });
+            
+            if(wantCam) {
+                camStream = new MediaStream(stream.getVideoTracks());
+                videoCamElement.srcObject = camStream;
+                await videoCamElement.play(); 
+                isCamOn = true;
+                document.getElementById('btn-cam').classList.remove('active-red');
+                document.getElementById('my-card').classList.remove('cam-off');
+            }
+
+            if(wantMic) {
+                micStream = new MediaStream(stream.getAudioTracks());
+                isMicOn = true;
+                // Adiciona áudio ao stream final (Se não tiver áudio, o peerjs ignora)
+                const audioTracks = micStream.getAudioTracks();
+                if(audioTracks.length > 0 && mixerStream.getAudioTracks().length === 0) {
+                     mixerStream.addTrack(audioTracks[0]);
+                }
+                document.getElementById('btn-mic').classList.remove('active-red');
+            }
+        } catch(e) {
+            console.error("Permissão negada ou erro:", e);
+            if(wantCam) { isCamOn = false; document.getElementById('btn-cam').classList.add('active-red'); document.getElementById('my-card').classList.add('cam-off'); }
+            if(wantMic) { isMicOn = false; document.getElementById('btn-mic').classList.add('active-red'); }
+        }
+        refreshTracks();
+    }
+
+    // --- CONTROLES INDEPENDENTES ---
+    async function toggleCam() {
+        if(!isCamOn) {
+            await requestMedia(true, false);
+        } else {
+            isCamOn = false;
+            // Para os trilhos
+            if(camStream) camStream.getTracks().forEach(t => t.stop());
+            camStream = null;
+            videoCamElement.srcObject = null;
             
             // UI
-            document.getElementById('btn-share').classList.add('active-green');
-            document.getElementById('my-card').classList.remove('cam-off'); 
-            isScreenSharing = true;
+            document.getElementById('btn-cam').classList.add('active-red');
             
-            // Se parar pelo navegador
-            screenStreamTemp.getVideoTracks()[0].onended = () => stopStreamerMode();
-
-        } catch(e) { console.error("Erro Screen:", e); }
-    }
-
-    function stopStreamerMode() {
-        if(!mixerCanvas) return;
-        
-        mixerCanvas = null; // Para o loop
-        if(screenStreamTemp) screenStreamTemp.getTracks().forEach(t => t.stop());
-
-        // Volta para a webcam pura
-        localStream = camStream;
-        replaceTrackGlobal(camStream.getVideoTracks()[0]);
-        document.getElementById('my-video').srcObject = camStream;
-        
-        document.getElementById('btn-share').classList.remove('active-green');
-        isScreenSharing = false;
-
-        // Se a cam estava desligada antes, volta a ficar preta
-        if(!isVideoEnabled) document.getElementById('my-card').classList.add('cam-off');
-    }
-
-    function replaceTrackGlobal(newTrack) {
-        Object.values(peersConectados).forEach(p => { 
-            if(p.call && p.call.peerConnection) {
-                const sender = p.call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                if(sender) sender.replaceTrack(newTrack);
-            }
-        });
-    }
-
-    // --- CONTROLES MÍDIA ---
-    function toggleCam() {
-        if(!camStream) return;
-        isVideoEnabled = !isVideoEnabled;
-        
-        if(isScreenSharing) {
-            // No modo streamer, apenas para de desenhar a cam no canvas
-        } else {
-            camStream.getVideoTracks()[0].enabled = isVideoEnabled;
-            if(isVideoEnabled) document.getElementById('my-card').classList.remove('cam-off');
-            else document.getElementById('my-card').classList.add('cam-off');
+            // Se não estiver compartilhando tela, mostra o avatar
+            if(!isScreenOn) document.getElementById('my-card').classList.add('cam-off');
         }
+    }
 
-        const btn = document.getElementById('btn-cam');
-        if(isVideoEnabled) btn.classList.remove('active-red');
-        else btn.classList.add('active-red');
+    async function toggleScreenShare() {
+        if(!isScreenOn) {
+            try {
+                // Pede a tela (Audio do sistema desligado para evitar eco no mixer simples)
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                screenStream = stream;
+                
+                // Conecta no elemento de vídeo oculto
+                videoScreenElement.srcObject = screenStream;
+                await videoScreenElement.play(); 
+                
+                isScreenOn = true;
+                document.getElementById('btn-share').classList.add('active-green');
+                document.getElementById('my-card').classList.remove('cam-off'); // Remove avatar pra mostrar tela
+                
+                // Listener para quando o usuário clica em "Parar" na barrinha do navegador
+                stream.getVideoTracks()[0].onended = () => {
+                    // Chama a função novamente para desligar tudo corretamente
+                    if(isScreenOn) toggleScreenShare();
+                };
 
-        Object.values(peersConectados).forEach(p => { if(p.conn?.open) p.conn.send({ type: 'video-state', enabled: isVideoEnabled }); });
+            } catch(e) { console.error("Erro tela:", e); }
+        } else {
+            // Desligando Tela
+            isScreenOn = false;
+            if(screenStream) screenStream.getTracks().forEach(t => t.stop());
+            screenStream = null;
+            videoScreenElement.srcObject = null;
+            document.getElementById('btn-share').classList.remove('active-green');
+            
+            // Se a câmera também estiver desligada, volta o avatar
+            if(!isCamOn) document.getElementById('my-card').classList.add('cam-off');
+        }
     }
 
     function toggleMic() {
-        if(camStream) {
-            camStream.getAudioTracks()[0].enabled = !camStream.getAudioTracks()[0].enabled;
+        if(micStream) {
+            const track = micStream.getAudioTracks()[0];
+            track.enabled = !track.enabled;
+            isMicOn = track.enabled;
             document.getElementById('btn-mic').classList.toggle('active-red');
+        } else {
+            requestMedia(false, true);
         }
     }
 
+    function toggleChat() { document.getElementById('appContainer').classList.toggle('chat-closed'); }
+    
     function toggleDeafen() {
         document.querySelectorAll('video:not(#my-video)').forEach(v => v.muted = !v.muted);
         document.getElementById('btn-deafen').classList.toggle('active-red');
     }
 
-    // --- CONEXÃO E DADOS ---
+    async function togglePiP() { 
+        const v = document.querySelector('.grid video:not(#my-video)') || document.getElementById('my-video'); 
+        if(document.pictureInPictureElement) document.exitPictureInPicture(); 
+        else if(v && v.readyState >= 1) await v.requestPictureInPicture(); 
+    }
+
+    function updateLocalPlayer() { document.getElementById('my-video').srcObject = mixerStream; }
+
+    function refreshTracks() {
+        const videoTrack = mixerStream.getVideoTracks()[0];
+        const audioTrack = mixerStream.getAudioTracks()[0];
+        
+        Object.values(peersConectados).forEach(p => {
+            if(p.call && p.call.peerConnection) {
+                const senders = p.call.peerConnection.getSenders();
+                const vs = senders.find(s => s.track && s.track.kind === 'video');
+                const as = senders.find(s => s.track && s.track.kind === 'audio');
+                if(vs && videoTrack) vs.replaceTrack(videoTrack);
+                if(as && audioTrack) as.replaceTrack(audioTrack);
+            }
+        });
+    }
+
+    // --- PEERJS CORE ---
+    function iniciarPeer() {
+        peer = new Peer(null, { debug: 1 });
+        peer.on('open', id => document.getElementById('my-id').innerText = id);
+        peer.on('connection', conn => setupDados(conn));
+        peer.on('call', call => { call.answer(mixerStream); setupChamada(call); });
+        peer.on('error', err => { if(err.type === 'peer-unavailable') alert("ID offline."); });
+    }
+
     function conectarManual() {
-        const id = document.getElementById('target-id').value.trim(); if(!id || id === peer.id) return;
+        const btn = document.getElementById('btn-connect');
+        btn.style.transform = "scale(0.9)"; setTimeout(() => btn.style.transform = "scale(1)", 150);
+        
+        const id = document.getElementById('target-id').value.trim(); 
+        if(!id) return alert("Digite um ID.");
+        if(id === peer.id) return alert("Erro: Auto-conexão.");
+
         localStorage.setItem('squad_last_id', id);
-        conectarAoPeer(id);
-    }
-    function reconectarUltimo() {
-        const lastId = localStorage.getItem('squad_last_id');
-        if(lastId) { document.getElementById('target-id').value = lastId; conectarAoPeer(lastId); }
-    }
-    function conectarAoPeer(id) {
+        checkReconnectButton();
+
         const meta = { nick: myNick, avatar: myAvatar };
-        const conn = peer.connect(id, { metadata: meta }); setupDados(conn);
-        const call = peer.call(id, localStream, { metadata: meta }); setupChamada(call);
+        const conn = peer.connect(id, { metadata: meta }); 
+        setupDados(conn);
+        const call = peer.call(id, mixerStream, { metadata: meta }); 
+        setupChamada(call);
     }
-    function sairApp() { if(confirm("Sair?")) location.reload(); }
 
     function setupDados(conn) {
         conn.on('open', () => {
             if(!peersConectados[conn.peer]) peersConectados[conn.peer] = {};
             peersConectados[conn.peer].conn = conn;
-            peersConectados[conn.peer].nick = conn.metadata?.nick || "Amigo";
-            peersConectados[conn.peer].avatar = conn.metadata?.avatar || myAvatar;
             conn.send({ type: 'update-user', nick: myNick, avatar: myAvatar });
+            logChat({nick:'SISTEMA', avatar:''}, `<span style="color:var(--primary)">Conectado!</span>`, false);
         });
         conn.on('data', data => {
             if(typeof data === 'string') logChat(peersConectados[conn.peer], data, false);
-            else if(data.type === 'file') receiveFile(peersConectados[conn.peer], data);
             else if(data.type === 'update-user') {
-                peersConectados[conn.peer].nick = data.nick; peersConectados[conn.peer].avatar = data.avatar;
+                if(!peersConectados[conn.peer]) peersConectados[conn.peer] = {};
+                peersConectados[conn.peer].nick = data.nick; 
+                peersConectados[conn.peer].avatar = data.avatar;
                 updateRemoteLabel(conn.peer, data.nick, data.avatar);
             }
+        });
+        conn.on('close', () => {
+             logChat({nick:'SISTEMA', avatar:''}, `<span style="color:red">Saiu.</span>`, false);
+             document.getElementById('card-'+conn.peer)?.remove();
         });
     }
 
     function setupChamada(call) {
         if(!peersConectados[call.peer]) peersConectados[call.peer] = {};
         peersConectados[call.peer].call = call;
-        if(call.metadata) { peersConectados[call.peer].nick = call.metadata.nick; peersConectados[call.peer].avatar = call.metadata.avatar; }
         call.on('stream', stream => addVideo(stream, call.peer, peersConectados[call.peer]));
         call.on('close', () => document.getElementById('card-'+call.peer)?.remove());
     }
 
-    // --- ARQUIVOS E CHAT ---
-    function enviarArquivo(input) {
-        const file = input.files[0]; if(!file) return;
-        if(file.size > 3*1024*1024) return alert("Máx 3MB");
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = { type: 'file', name: file.name, fileType: file.type, content: e.target.result };
-            Object.values(peersConectados).forEach(p => p.conn.send(data));
-            logFile({nick:'Você', avatar:myAvatar}, data, true);
-        }; reader.readAsDataURL(file); input.value = '';
-    }
-    function receiveFile(user, data) { logFile(user, data, false); }
-    function logFile(user, data, isMe) {
-        let contentHtml = '';
-        if(data.fileType.startsWith('image/')) contentHtml = `<img src="${data.content}" class="chat-img" onclick="window.open(this.src)">`;
-        else if(data.fileType.startsWith('audio/')) contentHtml = `<audio controls src="${data.content}" class="chat-audio"></audio>`;
-        else contentHtml = `<div style="background:rgba(255,255,255,0.1); padding:8px; border-radius:6px; margin-top:5px;">${data.name}</div>`;
-        logChat(user, contentHtml, isMe);
-    }
-
-    // --- HELPER UI ---
     function addVideo(stream, id, userData) {
         if(document.getElementById('card-'+id)) return;
         const nick = userData?.nick || "Amigo", avatar = userData?.avatar || myAvatar;
         const card = document.createElement('div'); card.className = 'card'; card.id = 'card-'+id;
-        card.innerHTML = `<div class="avatar-view"><img src="${avatar}" class="big-avatar"></div><video id="vid-${id}" autoplay></video><div class="label"><img src="${avatar}" class="mini-avatar"> ${nick}</div>`;
-        grid.appendChild(card); document.getElementById('vid-'+id).srcObject = stream;
+        card.innerHTML = `<video id="vid-${id}" autoplay></video><div class="label"><img src="${avatar}" class="mini-avatar"> ${nick}</div>`;
+        grid.appendChild(card); 
+        document.getElementById('vid-'+id).srcObject = stream;
     }
+
     function updateRemoteLabel(id, nick, avatar) {
         const card = document.getElementById('card-'+id);
-        if(card) { card.querySelector('.label').innerHTML = `<img src="${avatar}" class="mini-avatar"> ${nick}`; card.querySelector('.big-avatar').src = avatar; }
+        if(card) { card.querySelector('.label').innerHTML = `<img src="${avatar}" class="mini-avatar"> ${nick}`; }
     }
     function logChat(userData, content, isMe) {
         const chat = document.getElementById('chat-box');
-        chat.innerHTML += `<div class="msg ${isMe?'my-msg':''}"><div class="msg-header"><img src="${userData?.avatar||myAvatar}" style="width:18px;height:18px;border-radius:50%;"> ${userData?.nick||'Amigo'}</div>${content}</div>`;
+        const nick = userData?.nick || 'Sistema';
+        const avatar = userData?.avatar || '';
+        const imgTag = avatar ? `<img src="${avatar}" style="width:18px;height:18px;border-radius:50%;"> ` : '';
+        chat.innerHTML += `<div class="msg ${isMe?'my-msg':''}"><div class="msg-header">${imgTag}${nick}</div>${content}</div>`;
         chat.scrollTop = chat.scrollHeight;
     }
     function enviarMsg(e) {
         if(e.key === 'Enter') {
             const val = document.getElementById('msg-input').value; if(!val) return;
-            Object.values(peersConectados).forEach(p => p.conn.send(val));
+            Object.values(peersConectados).forEach(p => { if(p.conn && p.conn.open) p.conn.send(val); });
             logChat({nick:'Você', avatar:myAvatar}, val, true); document.getElementById('msg-input').value = '';
         }
     }
-    
-    // --- UTIL ---
-    function copierID() { navigator.clipboard.writeText(document.getElementById('my-id').innerText); alert("ID Copiado!"); }
+    function copiarID() { navigator.clipboard.writeText(document.getElementById('my-id').innerText); alert("ID Copiado!"); }
+    function reconectarUltimo() { document.getElementById('target-id').value = localStorage.getItem('squad_last_id'); conectarManual(); }
     function abrirConfig() { document.getElementById('configScreen').style.display = 'flex'; }
     function fecharConfig() { document.getElementById('configScreen').style.display = 'none'; }
-    async function reSolicitarMidia() { if(camStream) camStream.getTracks().forEach(t=>t.stop()); await pegarMidiaLocal(); fecharConfig(); }
+    function sairApp() { if(confirm("Sair?")) location.reload(); }
+    function reSolicitarMidia() { location.reload(); } 
     function testarAudio() { const ctx = new (window.AudioContext||window.webkitAudioContext)(); const o = ctx.createOscillator(); o.connect(ctx.destination); o.start(); setTimeout(()=>o.stop(),500); }
-    async function togglePiP() { const v = document.querySelector('.grid video:not(#my-video)')||document.getElementById('my-video'); if(document.pictureInPictureElement)document.exitPictureInPicture(); else if(v&&v.readyState>=1) await v.requestPictureInPicture(); }
-
 </script>
 </body>
 </html>
